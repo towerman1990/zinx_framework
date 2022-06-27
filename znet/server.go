@@ -25,7 +25,10 @@ func (s *Server) Start() {
 	fmt.Printf("[Zinx] Version: %s, MaxConn: %d, MaxPackageSize: %d",
 		conf.Config.Version, conf.Config.MaxConn, conf.Config.MaxPackageSize)
 	fmt.Printf("[Start] Server Listenner at IP: %s, Port %d, is starting\n", s.IP, s.Port)
+
 	go func() {
+		s.MsgHandler.StartWorkPool()
+
 		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
 		if err != nil {
 			fmt.Println("resovle tcp addr error: ", err)

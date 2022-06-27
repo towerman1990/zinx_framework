@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"zinx_framework/conf"
 	"zinx_framework/ziface"
 )
 
@@ -69,7 +70,11 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		go c.MsgHandler.DoMsgHandler(&req)
+		if conf.Config.WorkerPoolSize > 0 {
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		} else {
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
 	}
 }
 

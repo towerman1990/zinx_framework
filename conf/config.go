@@ -20,6 +20,10 @@ type Configure struct {
 	MaxConn int
 
 	MaxPackageSize uint32
+
+	WorkerPoolSize uint32
+
+	MaxWorkerTaskLen uint32
 }
 
 var Config *Configure
@@ -37,12 +41,14 @@ func (c *Configure) Reload() {
 
 func init() {
 	Config = &Configure{
-		Name:           "ZinxServerApp",
-		Version:        "v0.4",
-		TcpPort:        8088,
-		Host:           "0.0.0.1",
-		MaxConn:        100,
-		MaxPackageSize: 4096,
+		Name:             "ZinxServerApp",
+		Version:          "v0.8",
+		TcpPort:          8088,
+		Host:             "0.0.0.1",
+		MaxConn:          100,
+		MaxPackageSize:   4096,
+		WorkerPoolSize:   8,
+		MaxWorkerTaskLen: 1024,
 	}
 
 	Config.Reload()
