@@ -17,12 +17,18 @@ type Server struct {
 	Port int
 
 	MsgHandler ziface.IMsgHandle
+
+	ConnManager ziface.IConnManager
+
+	OnConnStart func(conn ziface.IConnection)
+
+	OnConnStop func(conn ziface.IConnection)
 }
 
 func (s *Server) Start() {
-	fmt.Printf("[Zinx] Server Name: %s, listenner at IP: %s, Port: %d, is starting",
+	fmt.Printf("[Zinx] Server Name: %s, listenner at IP: %s, Port: %d, is starting\n",
 		conf.Config.Name, conf.Config.Host, conf.Config.TcpPort)
-	fmt.Printf("[Zinx] Version: %s, MaxConn: %d, MaxPackageSize: %d",
+	fmt.Printf("[Zinx] Version: %s, MaxConn: %d, MaxPackageSize: %d\n",
 		conf.Config.Version, conf.Config.MaxConn, conf.Config.MaxPackageSize)
 	fmt.Printf("[Start] Server Listenner at IP: %s, Port %d, is starting\n", s.IP, s.Port)
 
@@ -50,15 +56,24 @@ func (s *Server) Start() {
 				continue
 			}
 
-			dealConn := NewConnection(conn, cid, s.MsgHandler)
+			if s.ConnManager.Len() > conf.Config.MaxConn {
+				fmt.Println("Too Many Connections, MaxConn =", conf.Config.MaxConn)
+				conn.Close()
+				continue
+			}
+
+			dealConn := NewConnection(s, conn, cid, s.MsgHandler)
 			cid++
 			go dealConn.Start()
 		}
 	}()
 }
-func (s *Server) Stop() {
 
+func (s *Server) Stop() {
+	fmt.Println("[Stop] Zinx server name ", s.Name)
+	s.ConnManager.ClearConn()
 }
+
 func (s *Server) Serve() {
 	s.Start()
 	select {}
@@ -69,13 +84,40 @@ func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
 	fmt.Println("Add router success")
 }
 
+func (s *Server) GetConnManager() ziface.IConnManager {
+	return s.ConnManager
+}
+
+func (s *Server) SetOnConnStart(hookFnc func(conn ziface.IConnection)) {
+	s.OnConnStart = hookFnc
+}
+
+func (s *Server) SetOnConnStop(hookFnc func(conn ziface.IConnection)) {
+	s.OnConnStop = hookFnc
+}
+
+func (s *Server) CallOnConnStart(conn ziface.IConnection) {
+	if s.OnConnStart != nil {
+		fmt.Println("-> Call OnConnStart()...")
+		s.OnConnStart(conn)
+	}
+}
+
+func (s *Server) CallOnConnStop(conn ziface.IConnection) {
+	if s.OnConnStart != nil {
+		fmt.Println("-> Call OnConnStop()...")
+		s.OnConnStop(conn)
+	}
+}
+
 func NewServer(name string) ziface.IServer {
 	s := &Server{
-		Name:       conf.Config.Name,
-		IPVersion:  "tcp4",
-		IP:         conf.Config.Host,
-		Port:       conf.Config.TcpPort,
-		MsgHandler: NewMsgHandle(),
+		Name:        conf.Config.Name,
+		IPVersion:   "tcp4",
+		IP:          conf.Config.Host,
+		Port:        conf.Config.TcpPort,
+		MsgHandler:  NewMsgHandle(),
+		ConnManager: NewConnManager(),
 	}
 	return s
 }

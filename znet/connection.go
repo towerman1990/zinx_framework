@@ -10,6 +10,8 @@ import (
 )
 
 type Connection struct {
+	TcpServer ziface.IServer
+
 	Conn *net.TCPConn
 
 	ConnID uint32
@@ -23,8 +25,9 @@ type Connection struct {
 	MsgHandler ziface.IMsgHandle
 }
 
-func NewConnection(conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
+func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
 	c := &Connection{
+		TcpServer:  server,
 		Conn:       conn,
 		ConnID:     connID,
 		MsgHandler: msgHandler,
@@ -32,6 +35,7 @@ func NewConnection(conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandl
 		isClosed:   false,
 		ExitChan:   make(chan bool, 1),
 	}
+	c.TcpServer.GetConnManager().Add(c)
 
 	return c
 }
@@ -101,6 +105,8 @@ func (c *Connection) Start() {
 	go c.StartReader()
 
 	go c.StartWriter()
+
+	c.TcpServer.CallOnConnStart(c)
 }
 
 func (c *Connection) Stop() {
@@ -110,8 +116,17 @@ func (c *Connection) Stop() {
 		return
 	}
 	c.isClosed = true
+
+	c.TcpServer.CallOnConnStop(c)
+
 	c.Conn.Close()
+
+	c.ExitChan <- true
+
+	c.TcpServer.GetConnManager().Remove(c)
+
 	close(c.ExitChan)
+
 	close(c.msgChan)
 }
 
