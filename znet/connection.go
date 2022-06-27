@@ -1,9 +1,10 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
-	"zinx_framework/conf"
 	"zinx_framework/ziface"
 )
 
@@ -37,16 +38,32 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
-		buf := make([]byte, conf.Config.MaxPackageSize)
-		_, err := c.Conn.Read(buf)
-		if err != nil {
-			fmt.Println("recv buf err ", err)
+		dp := NewDataPack()
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
+			fmt.Println("read msg head error:", err)
 			break
 		}
 
+		msg, err := dp.UnPack(headData)
+		if err != nil {
+			fmt.Println("unpack error:", err)
+			break
+		}
+
+		var data []byte
+		if msg.GetMsgLen() > 0 {
+			data = make([]byte, msg.GetMsgLen())
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
+				fmt.Println("read msg data error:", err)
+				break
+			}
+		}
+		msg.SetData(data)
+
 		req := Request{
 			conn: c,
-			data: buf,
+			msg:  msg,
 		}
 
 		go func(request ziface.IRequest) {
@@ -57,6 +74,7 @@ func (c *Connection) StartReader() {
 
 	}
 }
+
 func (c *Connection) Start() {
 	fmt.Println("Conn Start()... ConnID =", c.ConnID)
 	// TODO write func
@@ -86,6 +104,22 @@ func (c *Connection) RemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-func (c *Connection) Send(data []byte) error {
+func (c *Connection) SendMsg(msgID uint32, data []byte) error {
+	if c.isClosed {
+		return errors.New("Connection closed when send msg")
+	}
+
+	dp := NewDataPack()
+	binaryMsg, err := dp.Pack(NewMsgPackage(msgID, data))
+	if err != nil {
+		fmt.Println("Pack error msg id =", msgID)
+		return errors.New("pack error msg")
+	}
+
+	if _, err := c.Conn.Write(binaryMsg); err != nil {
+		fmt.Println("Write msg id =", msgID)
+		return errors.New("conn write error")
+	}
+
 	return nil
 }
