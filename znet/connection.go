@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"zinx_framework/conf"
 	"zinx_framework/ziface"
 )
@@ -23,6 +24,10 @@ type Connection struct {
 	msgChan chan []byte
 
 	MsgHandler ziface.IMsgHandle
+
+	property map[string]interface{}
+
+	propertyLock sync.RWMutex
 }
 
 func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, msgHandler ziface.IMsgHandle) *Connection {
@@ -34,6 +39,7 @@ func NewConnection(server ziface.IServer, conn *net.TCPConn, connID uint32, msgH
 		msgChan:    make(chan []byte),
 		isClosed:   false,
 		ExitChan:   make(chan bool, 1),
+		property:   make(map[string]interface{}),
 	}
 	c.TcpServer.GetConnManager().Add(c)
 
@@ -157,4 +163,29 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 	c.msgChan <- binaryMsg
 
 	return nil
+}
+
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	c.property[key] = value
+}
+
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyLock.RLock()
+	defer c.propertyLock.RUnlock()
+
+	if value, ok := c.property[key]; ok {
+		return value, nil
+	} else {
+		return nil, errors.New("no property found:" + key)
+	}
+}
+
+func (c *Connection) RemoveProperty(key string) {
+	c.propertyLock.Lock()
+	defer c.propertyLock.Unlock()
+
+	delete(c.property, key)
 }
