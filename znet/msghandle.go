@@ -3,8 +3,9 @@ package znet
 import (
 	"fmt"
 	"strconv"
-	"zinx_framework/conf"
-	"zinx_framework/ziface"
+
+	"towerman1990.cn/zinx_framework/conf"
+	"towerman1990.cn/zinx_framework/ziface"
 )
 
 type MsgHandle struct {

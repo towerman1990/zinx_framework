@@ -3,7 +3,8 @@ package conf
 import (
 	"encoding/json"
 	"io/ioutil"
-	"zinx_framework/ziface"
+
+	"towerman1990.cn/zinx_framework/ziface"
 )
 
 type Configure struct {

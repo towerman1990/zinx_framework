@@ -1,6 +1,6 @@
 package znet
 
-import "zinx_framework/ziface"
+import "towerman1990.cn/zinx_framework/ziface"
 
 type Request struct {
 	conn ziface.IConnection
